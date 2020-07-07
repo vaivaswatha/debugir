@@ -1,0 +1,9 @@
+build/
+cscope.out
+TAGS
+GTAGS
+GRTAGS
+GPATH
+.vscode
+compile_commands.json
+.gdbinit
