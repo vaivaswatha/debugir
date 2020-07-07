@@ -2,8 +2,9 @@
 
 This utility [revives](https://lists.llvm.org/pipermail/llvm-dev/2018-March/122013.html)
 the debug-ir pass in LLVM, but as a standalone tool. I found the idea of
-having a separate utility simpler after knowing that [this earlier patch]
-(https://reviews.llvm.org/D40778) to revive it within LLVM didn't go through.
+having a separate utility simpler after knowing that
+[this earlier patch](https://reviews.llvm.org/D40778) to revive it as a
+pass inside LLVM didn't go through.
 
 ## Instructions
 Let us assume that the LLVM-IR to be debugged is named `hello.ll`.
