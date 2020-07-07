@@ -214,11 +214,7 @@ public:
     DebugLoc NewLoc;
     if (Loc) {
       // I had a previous debug location: re-use the DebugLoc
-      NewLoc = DebugLoc::get(Line, Col,
-                             // Loc.getScope(RealInst->getContext()),
-                             Loc.getScope(),
-                             // Loc.getInlinedAt(RealInst->getContext()));
-                             Loc.getInlinedAt());
+      NewLoc = DebugLoc::get(Line, Col, Loc.getScope(), Loc.getInlinedAt());
     } else if (DINode *scope = findScope(&I)) {
       NewLoc = DebugLoc::get(Line, Col, scope, nullptr);
     } else {
@@ -241,7 +237,6 @@ private:
 
     if (CUToReplace) {
       // save fields from existing CU to re-use in the new CU
-      // unique_ptr<DICompileUnit> ExistingCU = CUToReplace->clone();
       Producer = CUToReplace->getProducer();
       IsOptimized = CUToReplace->isOptimized();
       Flags = CUToReplace->getFlags();
@@ -417,11 +412,7 @@ private:
   }
 
   /// Associates Instruction I with debug location Loc.
-  void addDebugLocation(Instruction &I, DebugLoc Loc) {
-    I.setDebugLoc(Loc);
-    // MDNode *MD = Loc.getAsMDNode();
-    // I.setMetadata(LLVMContext::MD_dbg, MD);
-  }
+  void addDebugLocation(Instruction &I, DebugLoc Loc) { I.setDebugLoc(Loc); }
 };
 
 } // anonymous namespace
