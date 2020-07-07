@@ -31,7 +31,7 @@ namespace {
 
 // Command line arguments parsed using LLVM's command line parser.
 cl::opt<std::string> InputFile(cl::Positional, cl::desc("<Input file>"),
-                                   cl::Required);
+                               cl::Required);
 
 void versionPrinter(llvm::raw_ostream &OS) { OS << "debugir: v0.1.0\n"; }
 
@@ -45,7 +45,7 @@ int main(int argc, char *argv[]) {
 
   SmallVector<char, 16> DBF(InputFile.begin(), InputFile.end());
   sys::path::replace_extension(DBF, ".dbg.ll");
-  std::string DebugFile (DBF.begin(), DBF.end());
+  std::string DebugFile(DBF.begin(), DBF.end());
 
   // The directory/filename that debug info should refer to.
   auto Directory = sys::path::parent_path(InputFile);
