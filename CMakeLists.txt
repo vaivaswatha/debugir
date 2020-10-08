@@ -13,11 +13,16 @@ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 # check dependencies
 #
 # LLVM stuff
-find_package(LLVM 10 REQUIRED CONFIG)
+find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+
 # Find the libraries that correspond to the LLVM components we use
 llvm_map_components_to_libnames(llvm_libs support core irreader transformutils)
+
+# include llvm cmake module
+list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
+include(AddLLVM)
 
 # compiler and linker options
 add_compile_options(-Wall)
@@ -31,7 +36,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # C++ standard
 set(CMAKE_CXX_STANDARD 14)
 
-add_executable(${TARGET}
+# use add llvm
+add_llvm_executable(${TARGET}
   DebugIR.cpp
   Main.cpp
 )
