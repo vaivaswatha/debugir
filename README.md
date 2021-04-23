@@ -53,7 +53,7 @@ Following on the example [here](https://llvm.org/docs/DebuggingJITedCode.html)
 let us try and debug `hello.dbg.ll`.
 
   - `$gdb lli-10`
-  - `(gdb) -jit-kind=mcjit hello.dbg.ll`
+  - `(gdb) set args -jit-kind=mcjit hello.dbg.ll`
   - `(gdb) break hello.ll:12 # set breakpoint at line 12 in hello.ll`
   - `(gdb) run`
 
