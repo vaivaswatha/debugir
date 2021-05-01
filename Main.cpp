@@ -18,10 +18,12 @@
 #include <cstdlib>
 #include <iostream>
 
+#include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IRReader/IRReader.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Transforms/Utils.h"
 
 #include "DebugIR.h"
 
@@ -32,6 +34,9 @@ namespace {
 // Command line arguments parsed using LLVM's command line parser.
 cl::opt<std::string> InputFile(cl::Positional, cl::desc("<Input file>"),
                                cl::Required);
+cl::opt<bool>
+    RunInstNamer("instnamer",
+                 cl::desc("Run instnamer on input, prior to processing it"));
 
 void versionPrinter(llvm::raw_ostream &OS) { OS << "debugir: v0.1.0\n"; }
 
@@ -60,6 +65,13 @@ int main(int argc, char *argv[]) {
     Smd.print(argv[0], OS);
     std::cerr << OS.str();
     return EXIT_FAILURE;
+  }
+
+  if (RunInstNamer) {
+
+    auto PM = llvm::legacy::PassManager();
+    PM.add((llvm::createInstructionNamerPass()));
+    PM.run(*M);
   }
 
   auto DisplayM = createDebugInfo(*M.get(), Directory, Filename);

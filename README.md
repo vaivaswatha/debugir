@@ -49,14 +49,19 @@ but with debug information referring to the input file.
 If you now debug `hello.dbg.ll` (instead of debugging `hello.ll`), the
 debugger can pickup and display `hello.ll` as the execution proceeds.
 
+Note: LLVM values that don't have an explicit name cannot have their
+names (and hence values) seen in GDB. To workaround this, provide
+explicit names yourself or run the instruction namer pass by providing
+the `-instnamer` flag to `debugir`.
+
 Following on the example [here](https://llvm.org/docs/DebuggingJITedCode.html)
 let us try and debug `hello.dbg.ll`.
 
   - `$gdb lli-10`
   - `(gdb) set args -jit-kind=mcjit hello.dbg.ll`
-  - `(gdb) break hello.ll:12 # set breakpoint at line 12 in hello.ll`
+  - `(gdb) break hello.ll:25 # set breakpoint at line 25 in hello.ll`
   - `(gdb) run`
 
-You should now hit the program at line 12 in `hello.ll`, assuming that
-line 12 is a valid line number in the LLVM source. Change this line number
-to an appropriate value.
+You should now hit the program at line 25 in `hello.ll`, assuming that
+line 25 is a valid line number in the LLVM source. Change this line number
+to an appropriate value or to a function name.

@@ -25,6 +25,7 @@
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/ValueMap.h"
+#include "llvm/IR/Verifier.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/FormattedStream.h"
@@ -69,6 +70,11 @@ public:
   // is printed.
   void printInfoComment(const Value &V, formatted_raw_ostream &Out) override {
     addEntry(&V, Out);
+  }
+
+  void emitBasicBlockStartAnnot(const BasicBlock *B,
+                                formatted_raw_ostream &Out) override {
+    addEntry(B, Out);
   }
 
   void emitFunctionAnnot(const Function *F,
@@ -117,8 +123,10 @@ class DIUpdater : public InstVisitor<DIUpdater> {
   DILexicalBlockFile *LexicalBlockFileNode;
 
   Module &M;
+  int tempNameCounter;
 
   ValueMap<const Function *, DISubprogram *> SubprogramDescriptors;
+  ValueMap<const BasicBlock *, DILexicalBlock *> BlockDescriptors;
   DenseMap<const Type *, DIType *> TypeDescriptors;
 
 public:
@@ -127,7 +135,7 @@ public:
             const ValueToValueMapTy *VMap = nullptr)
       : Builder(M), Layout(&M), LineTable(DisplayM ? DisplayM : &M), VMap(VMap),
         Finder(), Filename(Filename), Directory(Directory), FileNode(nullptr),
-        LexicalBlockFileNode(nullptr), M(M) {
+        LexicalBlockFileNode(nullptr), M(M), tempNameCounter(0) {
 
     // Even without finder, this screws up.
     Finder.processModule(M);
@@ -186,6 +194,26 @@ public:
                       << "\n");
 
     SubprogramDescriptors.insert(std::make_pair(&F, Sub));
+
+#if 0
+    // TODO: This doesn't seem to work. Debug location declarations
+    // seem to work only on allocas and for no other values. Clang
+    // also copies function arguments to allocas and sets debug locations
+    // on these allocas.
+    for (size_t I = 0; I < F.arg_size(); I++) {
+      auto *Arg = F.getArg(I);
+      if (Arg->getName().empty())
+        continue;
+
+      auto Scope = getBlockScope(Sub, &F.getEntryBlock());
+      auto DILV = Builder.createParameterVariable(
+          Scope, Arg->getName(), I+1, FileNode, Line,
+          getOrCreateType(Arg->getType()));
+      auto Loc = DebugLoc::get(Line, 0, Scope);
+      Builder.insertDeclare(Arg, DILV, Builder.createExpression(), Loc.get(),
+                            FirstInst);
+    }
+#endif
   }
 
   void visitInstruction(Instruction &I) {
@@ -211,12 +239,13 @@ public:
       return;
     }
 
-    DebugLoc NewLoc;
+    DIScope *Scope;
+    DILocation *InlinedAt;
     if (Loc) {
-      // I had a previous debug location: re-use the DebugLoc
-      NewLoc = DebugLoc::get(Line, Col, Loc.getScope(), Loc.getInlinedAt());
-    } else if (DINode *scope = findScope(&I)) {
-      NewLoc = DebugLoc::get(Line, Col, scope, nullptr);
+      Scope = llvm::cast<DIScope>(Loc.getScope());
+      InlinedAt = Loc.getInlinedAt();
+    } else if ((Scope = findScope(&I))) {
+      InlinedAt = nullptr;
     } else {
       LLVM_DEBUG(dbgs() << "WARNING: no valid scope for instruction " << &I
                         << ". no DebugLoc will be present."
@@ -224,7 +253,15 @@ public:
       return;
     }
 
+    DebugLoc NewLoc = DebugLoc::get(Line, Col, Scope, InlinedAt);
     addDebugLocation(I, NewLoc);
+
+    if (!I.getType()->isVoidTy() && !I.getName().empty()) {
+      auto DILV = Builder.createAutoVariable(Scope, I.getName(), FileNode, Line,
+                                             getOrCreateType(I.getType()));
+      Builder.insertDeclare(&I, DILV, Builder.createExpression(), NewLoc.get(),
+                            I.getParent());
+    }
   }
 
 private:
@@ -257,16 +294,47 @@ private:
     NMD->addOperand(CU);
   }
 
+  DIScope *getBlockScope(DIScope *ParentScope, const BasicBlock *B) {
+    const Function *F = B->getParent();
+    auto BScope = BlockDescriptors.find(B);
+    if (BScope != BlockDescriptors.end()) {
+      return BScope->second;
+    } else {
+      // Let's build a scope for this block.
+      unsigned Line = 0;
+      if (!findLine(B, Line)) {
+        LLVM_DEBUG(dbgs() << "WARNING: No line for basic block "
+                          << B->getName().str() << " in Function "
+                          << F->getName().str() << "\n");
+      }
+      auto Scope = Builder.createLexicalBlock(ParentScope, FileNode, Line, 0);
+      BlockDescriptors[B] = Scope;
+      return Scope;
+    }
+  }
+
   /// Returns the MDNode* that represents the DI scope to associate with I
   DIScope *findScope(const Instruction *I) {
-    const Function *F = I->getParent()->getParent();
-    if (DISubprogram *ret = findDISubprogram(F))
-      return ret;
 
-    LLVM_DEBUG(dbgs() << "WARNING: Using fallback lexical block file scope "
-                      << LexicalBlockFileNode << " as scope for instruction "
-                      << I << "\n");
-    return LexicalBlockFileNode;
+    const BasicBlock *B = I->getParent();
+    const Function *F = B->getParent();
+
+    auto returnFallback = [this, I]() {
+      LLVM_DEBUG(dbgs() << "WARNING: Using fallback lexical block file scope "
+                        << LexicalBlockFileNode << " as scope for instruction "
+                        << I << "\n");
+      return LexicalBlockFileNode;
+    };
+
+    DISubprogram *SubprogramScope = findDISubprogram(F);
+    if (!SubprogramScope)
+      return returnFallback();
+
+    auto *EntryBlockScope = getBlockScope(SubprogramScope, B);
+    if (&F->getEntryBlock() == B) {
+      return EntryBlockScope;
+    }
+    return getBlockScope(EntryBlockScope, B);
   }
 
   /// Returns the MDNode* that is the descriptor for F
@@ -356,8 +424,18 @@ private:
           Elements; // unfortunately, SmallVector<Type *> does not decay to
                     // SmallVector<Metadata *>
 
-      for (unsigned i = 0; i < T->getStructNumElements(); ++i)
-        Elements.push_back(getOrCreateType(T->getStructElementType(i)));
+      auto *TLayout = Layout.getStructLayout(llvm::cast<StructType>(T));
+      for (unsigned I = 0; I < T->getStructNumElements(); ++I) {
+        Type *ElType = T->getStructElementType(I);
+        DIType *ElDIType = getOrCreateType(ElType);
+        DIType *MemType = Builder.createMemberType(
+            LexicalBlockFileNode,
+            (T->getStructName().str() + "." +
+             std::to_string(tempNameCounter++)),
+            FileNode, 0, 0, 0, TLayout->getElementOffsetInBits(I),
+            DINode::DIFlags::FlagZero, ElDIType);
+        Elements.push_back(MemType);
+      }
 
       Builder.replaceArrays(S, Builder.getOrCreateArray(Elements));
     } else if (T->isPointerTy()) {
@@ -368,7 +446,6 @@ private:
             Layout.getPrefTypeAlignment(T), /*DWARFAddressSpace=*/None,
             getTypeName(T));
     } else if (T->isArrayTy()) {
-      // assert(false && "unimplemented arrayty lowering.");
       SmallVector<Metadata *, 4>
           Subscripts; // unfortunately, SmallVector<Type *> does not decay to
                       // SmallVector<Metadata *>
@@ -381,7 +458,6 @@ private:
                                   getOrCreateType(T->getArrayElementType()),
                                   Builder.getOrCreateArray(Subscripts));
     } else {
-      // assert(false && "unimplemented lowering for other types.");
       int encoding = llvm::dwarf::DW_ATE_signed;
       if (T->isIntegerTy())
         encoding = llvm::dwarf::DW_ATE_unsigned;
@@ -426,12 +502,18 @@ std::unique_ptr<Module> createDebugInfo(Module &M, std::string Directory,
   auto DisplayM = CloneModule(M, *VMap);
   StripDebugInfo(*(DisplayM.get()));
 
-  DIUpdater R(M, Filename, Directory, DisplayM.get(), VMap.get());
+  {
+    // DIUpdater is in its own scope so that it's destructor, and hence
+    // DIBuilder::finalize() gets called. Without that there's dangling stuff.
+    DIUpdater R(M, Filename, Directory, DisplayM.get(), VMap.get());
+  }
 
   auto DIVersionKey = "Debug Info Version";
   if (!M.getModuleFlag(DIVersionKey))
     // Add the current debug info version into the module.
     M.addModuleFlag(Module::Warning, DIVersionKey, DEBUG_METADATA_VERSION);
+
+  assert(!verifyModule(M, &errs()) && "verifyModule found issues");
 
   return DisplayM;
 }
