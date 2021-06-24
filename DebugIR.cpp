@@ -296,7 +296,6 @@ private:
   }
 
   DIScope *getBlockScope(DIScope *ParentScope, const BasicBlock *B) {
-    const Function *F = B->getParent();
     auto BScope = BlockDescriptors.find(B);
     if (BScope != BlockDescriptors.end()) {
       return BScope->second;
@@ -306,7 +305,7 @@ private:
       if (!findLine(B, Line)) {
         LLVM_DEBUG(dbgs() << "WARNING: No line for basic block "
                           << B->getName().str() << " in Function "
-                          << F->getName().str() << "\n");
+                          << B->getParent()->getName().str() << "\n");
       }
       auto Scope = Builder.createLexicalBlock(ParentScope, FileNode, Line, 0);
       BlockDescriptors[B] = Scope;
