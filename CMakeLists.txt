@@ -13,11 +13,15 @@ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 # check dependencies
 #
 # LLVM stuff
-find_package(LLVM 10 REQUIRED CONFIG)
+find_package(LLVM 12 REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 # Find the libraries that correspond to the LLVM components we use
 llvm_map_components_to_libnames(llvm_libs support core irreader transformutils)
+if (NOT LLVM_ENABLE_RTTI)
+  message(STATUS "LLVM does not have RTTI enabled. Building with -fno-rtti")
+  add_compile_options(-fno-rtti)
+endif()
 
 # compiler and linker options
 add_compile_options(-Wall)

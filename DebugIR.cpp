@@ -239,12 +239,12 @@ public:
       return;
     }
 
-    DIScope *Scope;
+    DILocalScope *Scope;
     DILocation *InlinedAt;
     if (Loc) {
-      Scope = llvm::cast<DIScope>(Loc.getScope());
+      Scope = llvm::cast<DILocalScope>(Loc.getScope());
       InlinedAt = Loc.getInlinedAt();
-    } else if ((Scope = findScope(&I))) {
+    } else if ((Scope = dyn_cast<DILocalScope>(findScope(&I)))) {
       InlinedAt = nullptr;
     } else {
       LLVM_DEBUG(dbgs() << "WARNING: no valid scope for instruction " << &I
@@ -253,7 +253,8 @@ public:
       return;
     }
 
-    DebugLoc NewLoc = DebugLoc::get(Line, Col, Scope, InlinedAt);
+    DebugLoc NewLoc =
+        DebugLoc(DILocation::get(M.getContext(), Line, Col, Scope, InlinedAt));
     addDebugLocation(I, NewLoc);
 
     if (!I.getType()->isVoidTy() && !I.getName().empty()) {
@@ -276,7 +277,7 @@ private:
       // save fields from existing CU to re-use in the new CU
       Producer = CUToReplace->getProducer();
       IsOptimized = CUToReplace->isOptimized();
-      Flags = CUToReplace->getFlags();
+      Flags = CUToReplace->getFlags().str();
       RuntimeVersion = CUToReplace->getRuntimeVersion();
       SplitName = CUToReplace->getSplitDebugFilename();
     } else {

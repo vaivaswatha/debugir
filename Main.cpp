@@ -74,7 +74,7 @@ int main(int argc, char *argv[]) {
     PM.run(*M);
   }
 
-  auto DisplayM = createDebugInfo(*M.get(), Directory, Filename);
+  auto DisplayM = createDebugInfo(*M.get(), Directory.str(), Filename.str());
   std::error_code EC;
 
   // Update InputFile in-place so that line numbers match with DebugFile.
