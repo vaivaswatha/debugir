@@ -40,8 +40,7 @@ If you have LLVM installed in a non-standard path, you may provide the
 additional `CMake` argument `-DLLVM_DIR=/path/to/llvm`.
 
 ### Run
-You should now have an executable file `buildir` in your CMake build
-directory.
+You should now have an executable file `debugir` in the build directory.
   - `$./debugir hello.ll`
 
 This produces a file `hello.dbg.ll`. **NOTE** The utility also overwrites
