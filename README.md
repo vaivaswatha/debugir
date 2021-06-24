@@ -30,11 +30,14 @@ Such a file can be dynamically generated, or using clang as
 </details>
 
 ### Clone and build
-This tool requires LLVM-10 to be installed.
+This tool requires LLVM-12 to be installed.
   - `$git clone https://github.com/vaivaswatha/debugir.git debugir`
   - `$cd debugir; mkdir build; cd build`
   - `$cmake -DCMAKE_BUILD_TYPE=Release ../`
   - `$cmake --build .`
+
+If you have LLVM installed in a non-standard path, you may provide the
+additional `CMake` argument `-DLLVM_DIR=/path/to/llvm`.
 
 ### Run
 You should now have an executable file `buildir` in your CMake build
@@ -57,11 +60,13 @@ the `-instnamer` flag to `debugir`.
 Following on the example [here](https://llvm.org/docs/DebuggingJITedCode.html)
 let us try and debug `hello.dbg.ll`.
 
-  - `$gdb lli-10`
+  - `$gdb lli`
   - `(gdb) set args -jit-kind=mcjit hello.dbg.ll`
   - `(gdb) break hello.ll:25 # set breakpoint at line 25 in hello.ll`
   - `(gdb) run`
 
 You should now hit the program at line 25 in `hello.ll`, assuming that
 line 25 is a valid line number in the LLVM source. Change this line number
-to an appropriate value or to a function name.
+to an appropriate value or to a function name. Note: Since `lli`, at the
+time of invocation from gdb will not have, yet, loaded the object file for
+`hello`, you will need to set `set breakpoint pending on` in `gdb`.
