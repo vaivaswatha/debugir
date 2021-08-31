@@ -320,6 +320,7 @@ private:
     const Function *F = B->getParent();
 
     auto returnFallback = [this, I]() {
+      (void)I;
       LLVM_DEBUG(dbgs() << "WARNING: Using fallback lexical block file scope "
                         << LexicalBlockFileNode << " as scope for instruction "
                         << I << "\n");
