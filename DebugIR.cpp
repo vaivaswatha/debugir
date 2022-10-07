@@ -432,7 +432,7 @@ private:
         DIType *ElDIType = getOrCreateType(ElType);
         DIType *MemType = Builder.createMemberType(
             LexicalBlockFileNode,
-            (!ST->isLiteral()?T->getStructName().str() + "." +
+            (ST->hasName()?T->getStructName().str() + "." +
              std::to_string(tempNameCounter++):"literal"),
             FileNode, 0, 0, 0, TLayout->getElementOffsetInBits(I),
             DINode::DIFlags::FlagZero, ElDIType);
