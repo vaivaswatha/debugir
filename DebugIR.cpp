@@ -409,7 +409,7 @@ private:
       return Builder.createUnspecifiedType("void");
     else if (T->isStructTy()) {
       // NOTE: where does DINodeArray come from?
-      StructType* ST = dyn_cast<StructType>(T);
+      StructType* ST = cast<StructType>(T);
       DICompositeType *S = Builder.createStructType(
           LexicalBlockFileNode, !ST->isLiteral()? T->getStructName():"literal", FileNode,
           /*LineNumber=*/0, Layout.getTypeSizeInBits(T),
