@@ -409,8 +409,9 @@ private:
       return Builder.createUnspecifiedType("void");
     else if (T->isStructTy()) {
       // NOTE: where does DINodeArray come from?
+      StructType* ST = cast<StructType>(T);
       DICompositeType *S = Builder.createStructType(
-          LexicalBlockFileNode, T->getStructName(), FileNode,
+          LexicalBlockFileNode, ST->hasName()? T->getStructName():"literal", FileNode,
           /*LineNumber=*/0, Layout.getTypeSizeInBits(T),
           Layout.getABITypeAlignment(T), /*DIFlags=*/llvm::DINode::FlagZero,
           /*DerivedFrom=*/nullptr, llvm::DINodeArray()); // filled in later
@@ -431,8 +432,8 @@ private:
         DIType *ElDIType = getOrCreateType(ElType);
         DIType *MemType = Builder.createMemberType(
             LexicalBlockFileNode,
-            (T->getStructName().str() + "." +
-             std::to_string(tempNameCounter++)),
+            (ST->hasName()?T->getStructName().str() + "." +
+             std::to_string(tempNameCounter++):"literal"),
             FileNode, 0, 0, 0, TLayout->getElementOffsetInBits(I),
             DINode::DIFlags::FlagZero, ElDIType);
         Elements.push_back(MemType);
