@@ -411,7 +411,7 @@ private:
       // NOTE: where does DINodeArray come from?
       StructType* ST = cast<StructType>(T);
       DICompositeType *S = Builder.createStructType(
-          LexicalBlockFileNode, !ST->isLiteral()? T->getStructName():"literal", FileNode,
+          LexicalBlockFileNode, ST->hasName()? T->getStructName():"literal", FileNode,
           /*LineNumber=*/0, Layout.getTypeSizeInBits(T),
           Layout.getABITypeAlignment(T), /*DIFlags=*/llvm::DINode::FlagZero,
           /*DerivedFrom=*/nullptr, llvm::DINodeArray()); // filled in later
