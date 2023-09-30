@@ -30,7 +30,7 @@ Such a file can be dynamically generated, or using clang as
 </details>
 
 ### Clone and build
-This tool requires LLVM-12 to be installed.
+This tool requires LLVM-14 to be installed.
   - `$git clone https://github.com/vaivaswatha/debugir.git debugir`
   - `$cd debugir; mkdir build; cd build`
   - `$cmake -DCMAKE_BUILD_TYPE=Release ../`

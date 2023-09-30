@@ -1,0 +1,44 @@
+on:
+  workflow_dispatch:
+
+name: Test debug ll generation
+
+jobs:
+  test-debug-ll-generation:
+    runs-on: [ubuntu-22.04]
+    timeout-minutes: 90
+    env:
+      LLVM_VERSION: 14
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Check if CMakeLists.txt is in sync with our LLVM_VERSION
+        run: |
+          grep -q "LLVM $LLVM_VERSION" CMakeLists.txt
+
+      - name: Check if README is in sync with our LLVM_VERSION
+        run: |
+          grep -q "LLVM-$LLVM_VERSION" README.md
+
+      - name: install LLVM
+        run: |
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          ./llvm.sh $LLVM_VERSION
+
+      - name: build debugir
+        run: |
+           mkdir build
+           cd build
+           cmake -DCMAKE_BUILD_TYPE=Release ../
+           cmake --build .
+
+      - name: generate hello.ll
+        run: |
+          cd test-files
+          clang-$LLVM_VERSION -emit-llvm -o hello.ll -S hello.c
+
+      - name: test generating hello dbg ll
+        run: |
+           ./build/debugir ./test-files/hello.ll
+           test -e ./test-files/hello.dbg.ll
