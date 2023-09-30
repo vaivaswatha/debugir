@@ -24,7 +24,7 @@ jobs:
         run: |
           wget https://apt.llvm.org/llvm.sh
           chmod +x llvm.sh
-          ./llvm.sh $LLVM_VERSION
+          sudo ./llvm.sh $LLVM_VERSION
 
       - name: build debugir
         run: |
