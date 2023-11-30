@@ -409,37 +409,43 @@ private:
       return Builder.createUnspecifiedType("void");
     else if (T->isStructTy()) {
       // NOTE: where does DINodeArray come from?
-      StructType* ST = cast<StructType>(T);
-      DICompositeType *S = Builder.createStructType(
-          LexicalBlockFileNode, ST->hasName()? T->getStructName():"literal", FileNode,
-          /*LineNumber=*/0, Layout.getTypeSizeInBits(T),
-          Layout.getABITypeAlignment(T), /*DIFlags=*/llvm::DINode::FlagZero,
-          /*DerivedFrom=*/nullptr, llvm::DINodeArray()); // filled in later
-      N = S; // the Node _is_ the struct type.
-
-      // N is added to the map (early) so that element search below can find it,
-      // so as to avoid infinite recursion for structs that contain pointers to
-      // their own type.
-      TypeDescriptors[T] = N;
-
-      SmallVector<Metadata *, 4>
-          Elements; // unfortunately, SmallVector<Type *> does not decay to
-                    // SmallVector<Metadata *>
-
-      auto *TLayout = Layout.getStructLayout(llvm::cast<StructType>(T));
-      for (unsigned I = 0; I < T->getStructNumElements(); ++I) {
-        Type *ElType = T->getStructElementType(I);
-        DIType *ElDIType = getOrCreateType(ElType);
-        DIType *MemType = Builder.createMemberType(
+      StructType *ST = cast<StructType>(T);
+      if (ST->isOpaque())
+        N = Builder.createUnspecifiedType(ST->getName());
+      else {
+        DICompositeType *S = Builder.createStructType(
             LexicalBlockFileNode,
-            (ST->hasName()?T->getStructName().str() + "." +
-             std::to_string(tempNameCounter++):"literal"),
-            FileNode, 0, 0, 0, TLayout->getElementOffsetInBits(I),
-            DINode::DIFlags::FlagZero, ElDIType);
-        Elements.push_back(MemType);
-      }
+            ST->hasName() ? T->getStructName() : "literal", FileNode,
+            /*LineNumber=*/0, Layout.getTypeSizeInBits(T),
+            Layout.getABITypeAlignment(T), /*DIFlags=*/llvm::DINode::FlagZero,
+            /*DerivedFrom=*/nullptr, llvm::DINodeArray()); // filled in later
+        N = S; // the Node _is_ the struct type.
 
-      Builder.replaceArrays(S, Builder.getOrCreateArray(Elements));
+        // N is added to the map (early) so that element search below can find
+        // it, so as to avoid infinite recursion for structs that contain
+        // pointers to their own type.
+        TypeDescriptors[T] = N;
+
+        SmallVector<Metadata *, 4>
+            Elements; // unfortunately, SmallVector<Type *> does not decay to
+                      // SmallVector<Metadata *>
+
+        auto *TLayout = Layout.getStructLayout(llvm::cast<StructType>(T));
+        for (unsigned I = 0; I < T->getStructNumElements(); ++I) {
+          Type *ElType = T->getStructElementType(I);
+          DIType *ElDIType = getOrCreateType(ElType);
+          DIType *MemType = Builder.createMemberType(
+              LexicalBlockFileNode,
+              (ST->hasName() ? T->getStructName().str() + "." +
+                                   std::to_string(tempNameCounter++)
+                             : "literal"),
+              FileNode, 0, 0, 0, TLayout->getElementOffsetInBits(I),
+              DINode::DIFlags::FlagZero, ElDIType);
+          Elements.push_back(MemType);
+        }
+
+        Builder.replaceArrays(S, Builder.getOrCreateArray(Elements));
+      }
     } else if (T->isPointerTy()) {
       Type *PointeeTy = T->getPointerElementType();
       if (!(N = getType(PointeeTy)))
