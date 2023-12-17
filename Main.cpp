@@ -18,16 +18,19 @@
 #include <cstdlib>
 #include <iostream>
 
+#include "llvm/Analysis/CGSCCPassManager.h"
+#include "llvm/Analysis/LoopAnalysisManager.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IRReader/IRReader.h"
 #include "llvm/Pass.h"
+#include "llvm/Passes/PassBuilder.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/Path.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/raw_ostream.h"
-#include "llvm/Transforms/Utils.h"
+#include "llvm/Transforms/Utils/InstructionNamer.h"
 
 #include "DebugIR.h"
 
@@ -70,10 +73,33 @@ int main(int argc, char *argv[]) {
   }
 
   if (RunInstNamer) {
+    // Create the analysis managers.
+    // These must be declared in this order so that they are destroyed in the
+    // correct order due to inter-analysis-manager references.
+    LoopAnalysisManager LAM;
+    FunctionAnalysisManager FAM;
+    CGSCCAnalysisManager CGAM;
+    ModuleAnalysisManager MAM;
 
-    auto PM = llvm::legacy::PassManager();
-    PM.add((llvm::createInstructionNamerPass()));
-    PM.run(*M);
+    // Create the new pass manager builder.
+    // Take a look at the PassBuilder constructor parameters for more
+    // customization, e.g. specifying a TargetMachine or various debugging
+    // options.
+    PassBuilder PB;
+
+    // Register all the basic analyses with the managers.
+    PB.registerModuleAnalyses(MAM);
+    PB.registerCGSCCAnalyses(CGAM);
+    PB.registerFunctionAnalyses(FAM);
+    PB.registerLoopAnalyses(LAM);
+    PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
+
+    FunctionPassManager PM;
+    PM.addPass((llvm::InstructionNamerPass()));
+
+    ModulePassManager MPM =
+        PB.buildPerModuleDefaultPipeline(OptimizationLevel::O2);
+    MPM.run(*M, MAM);
   }
 
   auto DisplayM = createDebugInfo(*M.get(), Directory.str(), Filename.str());

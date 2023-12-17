@@ -27,11 +27,7 @@
 #include "llvm/IR/ValueMap.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/Support/Debug.h"
-#include "llvm/Support/FileSystem.h"
 #include "llvm/Support/FormattedStream.h"
-#include "llvm/Support/Path.h"
-#include "llvm/Support/ToolOutputFile.h"
-#include "llvm/Transforms/Instrumentation.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 #include <string>
 
@@ -417,7 +413,7 @@ private:
             LexicalBlockFileNode,
             ST->hasName() ? T->getStructName() : "literal", FileNode,
             /*LineNumber=*/0, Layout.getTypeSizeInBits(T),
-            Layout.getABITypeAlignment(T), /*DIFlags=*/llvm::DINode::FlagZero,
+            Layout.getPrefTypeAlign(T).value() * CHAR_BIT, /*DIFlags=*/llvm::DINode::FlagZero,
             /*DerivedFrom=*/nullptr, llvm::DINodeArray()); // filled in later
         N = S; // the Node _is_ the struct type.
 
@@ -447,12 +443,10 @@ private:
         Builder.replaceArrays(S, Builder.getOrCreateArray(Elements));
       }
     } else if (T->isPointerTy()) {
-      Type *PointeeTy = T->getPointerElementType();
-      if (!(N = getType(PointeeTy)))
-        N = Builder.createPointerType(
-            getOrCreateType(PointeeTy), Layout.getPointerTypeSizeInBits(T),
-            Layout.getPrefTypeAlignment(T), /*DWARFAddressSpace=*/None,
-            getTypeName(T));
+      N = Builder.createPointerType(
+          nullptr, Layout.getPointerTypeSizeInBits(T),
+          Layout.getPrefTypeAlign(T).value() * CHAR_BIT, /*DWARFAddressSpace=*/std::nullopt,
+          getTypeName(T));
     } else if (T->isArrayTy()) {
       SmallVector<Metadata *, 4>
           Subscripts; // unfortunately, SmallVector<Type *> does not decay to
@@ -462,7 +456,7 @@ private:
           Builder.getOrCreateSubrange(0, T->getArrayNumElements() - 1));
 
       N = Builder.createArrayType(Layout.getTypeSizeInBits(T),
-                                  Layout.getPrefTypeAlignment(T),
+                                  Layout.getPrefTypeAlign(T).value() * CHAR_BIT,
                                   getOrCreateType(T->getArrayElementType()),
                                   Builder.getOrCreateArray(Subscripts));
     } else {
