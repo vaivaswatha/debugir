@@ -9,7 +9,10 @@ pass inside LLVM didn't go through.
 ## Instructions
 Let us assume that the LLVM-IR to be debugged is named `hello.ll`.
 Such a file can be dynamically generated, or using clang as
-  - `$clang -emit-llvm -o hello.ll -S hello.c`.
+
+```sh
+  clang -emit-llvm -o hello.ll -S hello.c.
+```
 
 <details><summary>hello.c</summary>
 
@@ -30,18 +33,24 @@ Such a file can be dynamically generated, or using clang as
 </details>
 
 ### Clone and build
-This tool requires LLVM-14 to be installed.
-  - `$git clone https://github.com/vaivaswatha/debugir.git debugir`
-  - `$cd debugir; mkdir build; cd build`
-  - `$cmake -DCMAKE_BUILD_TYPE=Release ../`
-  - `$cmake --build .`
+This tool requires LLVM-17 to be installed.
+
+```sh
+  git clone https://github.com/vaivaswatha/debugir.git debugir
+  cd debugir; mkdir build; cd build
+  cmake -DCMAKE_BUILD_TYPE=Release ../
+  cmake --build .
+```
 
 If you have LLVM installed in a non-standard path, you may provide the
 additional `CMake` argument `-DLLVM_DIR=/path/to/llvm`.
 
 ### Run
 You should now have an executable file `debugir` in the build directory.
-  - `$./debugir hello.ll`
+
+```sh
+  ./debugir hello.ll
+```
 
 This produces a file `hello.dbg.ll`. **NOTE** The utility also overwrites
 the input LLVM-IR file (if you have comments in it, they will be lost).
@@ -59,10 +68,17 @@ the `-instnamer` flag to `debugir`.
 Following on the example [here](https://llvm.org/docs/DebuggingJITedCode.html)
 let us try and debug `hello.dbg.ll`.
 
-  - `$gdb lli`
-  - `(gdb) set args -jit-kind=mcjit hello.dbg.ll`
-  - `(gdb) break hello.ll:25 # set breakpoint at line 25 in hello.ll`
-  - `(gdb) run`
+```sh
+  gdb --args lli -jit-kind=mcjit hello.dbg.ll
+  (gdb) break hello.ll:25 # set breakpoint at line 25 in hello.ll
+  (gdb) run
+```
+
+```sh
+  lldb lli -- -jit-kind=mcjit hello.dbg.ll
+  (lldb) break set -y hello.ll:25 # set breakpoint at line 25 in hello.ll
+  (lldb) run
+```
 
 You should now hit the program at line 25 in `hello.ll`, assuming that
 line 25 is a valid line number in the LLVM source. Change this line number

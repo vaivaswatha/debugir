@@ -16,6 +16,10 @@
 #ifndef DEBUG_IR_H
 #define DEBUG_IR_H
 
+#include "llvm/IR/Module.h"
+#include <memory>
+#include <string>
+
 namespace llvm {
 
 // Attaches debug info to M, assuming it is parsed from Directory/Filename.

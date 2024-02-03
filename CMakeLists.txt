@@ -1,7 +1,11 @@
 cmake_minimum_required(VERSION 3.5.1)
 
-project(DebugIR)
-set(TARGET debugir)
+project(DebugIR LANGUAGES C CXX)
+
+# export compile commands
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+# C++ standard
+set(CMAKE_CXX_STANDARD 20)
 
 # detect operating system
 message(STATUS "We are on a ${CMAKE_SYSTEM_NAME} system")
@@ -13,35 +17,34 @@ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 # check dependencies
 #
 # LLVM stuff
-find_package(LLVM 14 REQUIRED CONFIG)
+find_package(LLVM 17.0 REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 # Find the libraries that correspond to the LLVM components we use
-llvm_map_components_to_libnames(llvm_libs support core irreader transformutils)
-if (NOT LLVM_ENABLE_RTTI)
-  message(STATUS "LLVM does not have RTTI enabled. Building with -fno-rtti")
-  add_compile_options(-fno-rtti)
-endif()
+llvm_map_components_to_libnames(llvm_libs support core irreader transformutils Passes)
 
-# compiler and linker options
-add_compile_options(-Wall)
-add_compile_options(-Werror)
-add_compile_options(-pedantic)
-add_compile_options(-Wextra)
-add_compile_options(-Wno-unknown-pragmas)
-
-# export compile commands
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-# C++ standard
-set(CMAKE_CXX_STANDARD 14)
-
-add_executable(${TARGET}
+add_executable(debugir
   DebugIR.cpp
   Main.cpp
 )
 
-target_compile_definitions(${TARGET} PUBLIC ${LLVM_DEFINITIONS})
-target_include_directories(${TARGET} PUBLIC ${PROJECT_SOURCE_DIR})
-# We include LLVM includes as system includes to avoid warnings from there.
-target_include_directories(${TARGET} SYSTEM PUBLIC ${LLVM_INCLUDE_DIRS})
-target_link_libraries (${TARGET} PUBLIC ${llvm_libs})
+if (NOT LLVM_ENABLE_RTTI)
+  message(STATUS "LLVM does not have RTTI enabled. Building with -fno-rtti")
+  target_compile_options(debugir PRIVATE -fno-rtti)
+endif()
+
+# compiler and linker options
+target_compile_options(debugir PRIVATE
+  -Wall
+  -Werror
+  -pedantic
+  -Wextra
+  -Wno-unknown-pragmas
+  -Wno-unused-parameter
+)
+
+separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
+target_compile_definitions(debugir PUBLIC ${LLVM_DEFINITIONS_LIST})
+target_include_directories(debugir PUBLIC ${PROJECT_SOURCE_DIR})
+target_include_directories(debugir PUBLIC ${LLVM_INCLUDE_DIRS})
+target_link_libraries (debugir PUBLIC ${llvm_libs})

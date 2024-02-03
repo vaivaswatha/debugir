@@ -9,3 +9,4 @@ compile_commands.json
 .gdbinit
 hello.ll
 hello.dbg.ll
+.cache/
