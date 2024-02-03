@@ -40,6 +40,7 @@ target_compile_options(debugir PRIVATE
   -pedantic
   -Wextra
   -Wno-unknown-pragmas
+  -Wno-unused-parameter
 )
 
 separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
