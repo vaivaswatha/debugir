@@ -22,6 +22,10 @@
 
 namespace llvm {
 
+// Each BasicBlock uses a different DIScope.
+// Default is false.
+extern bool BBAlwaysNewScope;
+
 // Attaches debug info to M, assuming it is parsed from Directory/Filename.
 // Returns a module for display in debugger devoid of any debug info.
 std::unique_ptr<llvm::Module>
