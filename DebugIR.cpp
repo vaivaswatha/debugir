@@ -20,6 +20,7 @@
 #include "llvm/IR/DIBuilder.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/DebugInfo.h"
+#include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/InstVisitor.h"
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/LLVMContext.h"
@@ -191,25 +192,27 @@ public:
 
     SubprogramDescriptors.insert(std::make_pair(&F, Sub));
 
-#if 0
-    // TODO: This doesn't seem to work. Debug location declarations
-    // seem to work only on allocas and for no other values. Clang
-    // also copies function arguments to allocas and sets debug locations
-    // on these allocas.
+    // Clang and the Kaleidoscope tutorial both copy function arguments to
+    // allocas and then insert debug locations on these allocas.
+    IRBuilder<> ArgIrBuilder(&F.getEntryBlock(),
+                             F.getEntryBlock().getFirstInsertionPt());
     for (size_t I = 0; I < F.arg_size(); I++) {
       auto *Arg = F.getArg(I);
       if (Arg->getName().empty())
         continue;
+      auto *Alloca =
+          ArgIrBuilder.CreateAlloca(Arg->getType(), nullptr, Arg->getName());
+      ArgIrBuilder.CreateStore(Arg, Alloca);
 
-      auto Scope = getBlockScope(Sub, &F.getEntryBlock());
+      // Scope must be the function for gdb to recognize this as a function
+      // argument
       auto DILV = Builder.createParameterVariable(
-          Scope, Arg->getName(), I+1, FileNode, Line,
-          getOrCreateType(Arg->getType()));
-      auto Loc = DebugLoc::get(Line, 0, Scope);
-      Builder.insertDeclare(Arg, DILV, Builder.createExpression(), Loc.get(),
-                            FirstInst);
+          Sub, Arg->getName(), I + 1, FileNode, Line,
+          getOrCreateType(Arg->getType()), true);
+      auto Loc = DebugLoc(DILocation::get(M.getContext(), Line, 0, Sub));
+      Builder.insertDeclare(Alloca, DILV, Builder.createExpression(), Loc.get(),
+                            &F.getEntryBlock());
     }
-#endif
   }
 
   void visitInstruction(Instruction &I) {
