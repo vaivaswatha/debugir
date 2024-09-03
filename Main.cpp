@@ -94,11 +94,13 @@ int main(int argc, char *argv[]) {
     PB.registerLoopAnalyses(LAM);
     PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
 
-    FunctionPassManager PM;
-    PM.addPass((llvm::InstructionNamerPass()));
+    PB.registerPipelineStartEPCallback([&](ModulePassManager &MPM,
+                                           OptimizationLevel Level) {
+      MPM.addPass(createModuleToFunctionPassAdaptor(InstructionNamerPass()));
+    });
 
     ModulePassManager MPM =
-        PB.buildPerModuleDefaultPipeline(OptimizationLevel::O2);
+        PB.buildPerModuleDefaultPipeline(OptimizationLevel::O1);
     MPM.run(*M, MAM);
   }
 
