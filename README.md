@@ -11,7 +11,7 @@ Let us assume that the LLVM-IR to be debugged is named `hello.ll`.
 Such a file can be dynamically generated, or using clang as
 
 ```sh
-  clang -emit-llvm -o hello.ll -S hello.c.
+  clang -emit-llvm -o hello.ll -S hello.c
 ```
 
 <details><summary>hello.c</summary>
@@ -33,7 +33,7 @@ Such a file can be dynamically generated, or using clang as
 </details>
 
 ### Clone and build
-This tool requires LLVM-17 to be installed.
+This tool requires LLVM-18 to be installed.
 
 ```sh
   git clone https://github.com/vaivaswatha/debugir.git debugir
