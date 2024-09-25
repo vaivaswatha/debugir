@@ -70,18 +70,18 @@ let us try and debug `hello.dbg.ll`.
 
 ```sh
   gdb --args lli -jit-kind=mcjit hello.dbg.ll
-  (gdb) break hello.ll:25 # set breakpoint at line 25 in hello.ll
+  (gdb) break hello.ll:15 # set breakpoint at line 15 in hello.ll
   (gdb) run
 ```
 
 ```sh
   lldb lli -- -jit-kind=mcjit hello.dbg.ll
-  (lldb) break set -y hello.ll:25 # set breakpoint at line 25 in hello.ll
+  (lldb) break set -y hello.ll:15 # set breakpoint at line 15 in hello.ll
   (lldb) run
 ```
 
-You should now hit the program at line 25 in `hello.ll`, assuming that
-line 25 is a valid line number in the LLVM source. Change this line number
+You should now hit the program at line 15 in `hello.ll`, assuming that
+line 15 is a valid line number in the LLVM source. Change this line number
 to an appropriate value or to a function name. Note: Since `lli`, at the
 time of invocation from gdb will not have, yet, loaded the object file for
 `hello`, you will need to set `set breakpoint pending on` in `gdb`.
