@@ -39,11 +39,17 @@ using namespace llvm;
 namespace {
 
 // Command line arguments parsed using LLVM's command line parser.
-cl::opt<std::string> InputFile(cl::Positional, cl::desc("<Input file>"),
+cl::opt<std::string> InputFile(cl::Positional, cl::desc("<Input files ...>"),
                                cl::Required);
 cl::opt<bool>
     RunInstNamer("instnamer",
                  cl::desc("Run instnamer on input, prior to processing it"));
+
+cl::opt<bool, true>
+    AlwaysNew("newscope",
+              cl::desc("Each BasicBlock uses a different DIScope."),
+              cl::location(BBAlwaysNewScope),
+              cl::init(false));
 
 void versionPrinter(llvm::raw_ostream &OS) { OS << "debugir: v0.1.0\n"; }
 

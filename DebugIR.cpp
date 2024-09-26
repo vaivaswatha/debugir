@@ -123,7 +123,7 @@ class DIUpdater : public InstVisitor<DIUpdater> {
   int tempNameCounter;
 
   ValueMap<const Function *, DISubprogram *> SubprogramDescriptors;
-  ValueMap<const BasicBlock *, DILexicalBlock *> BlockDescriptors;
+  ValueMap<const Value *, DILexicalBlock *> ScopeDescriptors;
   DenseMap<const Type *, DIType *> TypeDescriptors;
 
 public:
@@ -295,9 +295,10 @@ private:
   }
 
   DIScope *getBlockScope(DIScope *ParentScope, const BasicBlock *B) {
-    auto BScope = BlockDescriptors.find(B);
-    if (BScope != BlockDescriptors.end()) {
-      return BScope->second;
+    auto S = BBAlwaysNewScope ? dyn_cast<Value>(B) : dyn_cast<Value>(B->getParent());
+    auto ScopeIt = ScopeDescriptors.find(S);
+    if (ScopeIt != ScopeDescriptors.end()) {
+      return ScopeIt->second;
     } else {
       // Let's build a scope for this block.
       unsigned Line = 0;
@@ -307,7 +308,7 @@ private:
                           << B->getParent()->getName().str() << "\n");
       }
       auto Scope = Builder.createLexicalBlock(ParentScope, FileNode, Line, 0);
-      BlockDescriptors[B] = Scope;
+      ScopeDescriptors[S] = Scope;
       return Scope;
     }
   }
@@ -499,6 +500,8 @@ private:
 } // anonymous namespace
 
 namespace llvm {
+
+bool BBAlwaysNewScope = false;
 
 std::unique_ptr<Module> createDebugInfo(Module &M, std::string Directory,
                                         std::string Filename) {
