@@ -29,18 +29,15 @@ else()
   llvm_map_components_to_libnames(llvm_libs support core irreader transformutils Passes)
 endif()
 
-add_executable(debugir
-  DebugIR.cpp
-  Main.cpp
-)
+add_library(dbgir SHARED DebugIR.cpp)
 
+# Match LLVM's RTTI build mode
 if (NOT LLVM_ENABLE_RTTI)
   message(STATUS "LLVM does not have RTTI enabled. Building with -fno-rtti")
-  target_compile_options(debugir PRIVATE -fno-rtti)
+  target_compile_options(dbgir PUBLIC -fno-rtti)
 endif()
 
-# compiler and linker options
-target_compile_options(debugir PRIVATE
+set(DEBUGIR_WARN_FLAGS
   -Wall
   -Werror
   -pedantic
@@ -49,8 +46,16 @@ target_compile_options(debugir PRIVATE
   -Wno-unused-parameter
 )
 
+# compiler and linker options
+#   PUBLIC because we apply the same to the debugir executable
+target_compile_options(dbgir PRIVATE ${DEBUGIR_WARN_FLAGS})
+
 separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
-target_compile_definitions(debugir PUBLIC ${LLVM_DEFINITIONS_LIST})
-target_include_directories(debugir PUBLIC ${PROJECT_SOURCE_DIR})
-target_include_directories(debugir PUBLIC ${LLVM_INCLUDE_DIRS})
-target_link_libraries (debugir PUBLIC ${llvm_libs})
+target_compile_definitions(dbgir PUBLIC ${LLVM_DEFINITIONS_LIST})
+target_include_directories(dbgir PUBLIC ${PROJECT_SOURCE_DIR})
+target_include_directories(dbgir PUBLIC ${LLVM_INCLUDE_DIRS})
+target_link_libraries (dbgir PUBLIC ${llvm_libs})
+
+add_executable(debugir Main.cpp)
+target_compile_options(debugir PRIVATE ${DEBUGIR_WARN_FLAGS})
+target_link_libraries(debugir dbgir)
