@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.5.1)
 
 project(DebugIR LANGUAGES C CXX)
 
+option(LINK_LLVM_SHARED "Control whether debugir links to a shared LLVM library, or individual static components" ON)
+
 # export compile commands
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # C++ standard
@@ -20,8 +22,12 @@ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 find_package(LLVM 18.1 REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
-# Find the libraries that correspond to the LLVM components we use
-llvm_map_components_to_libnames(llvm_libs support core irreader transformutils Passes)
+if(LINK_LLVM_SHARED)
+  set(llvm_libs LLVM)
+else()
+  # Find the libraries that correspond to the LLVM components we use
+  llvm_map_components_to_libnames(llvm_libs support core irreader transformutils Passes)
+endif()
 
 add_executable(debugir
   DebugIR.cpp

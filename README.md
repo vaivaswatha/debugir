@@ -45,6 +45,12 @@ This tool requires LLVM-18 to be installed.
 If you have LLVM installed in a non-standard path, you may provide the
 additional `CMake` argument `-DLLVM_DIR=/path/to/llvm`.
 
+If you would like to link debugir to the relevant static LLVM components, use
+```
+-DLINK_LLVM_SHARED=OFF
+```
+during the cmake command. 
+
 ### Run
 You should now have an executable file `debugir` in the build directory.
 
