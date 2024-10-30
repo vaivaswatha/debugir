@@ -20,8 +20,6 @@ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 find_package(LLVM 18.1 REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
-# Find the libraries that correspond to the LLVM components we use
-llvm_map_components_to_libnames(llvm_libs support core irreader transformutils Passes)
 
 add_executable(debugir
   DebugIR.cpp
@@ -47,4 +45,4 @@ separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
 target_compile_definitions(debugir PUBLIC ${LLVM_DEFINITIONS_LIST})
 target_include_directories(debugir PUBLIC ${PROJECT_SOURCE_DIR})
 target_include_directories(debugir PUBLIC ${LLVM_INCLUDE_DIRS})
-target_link_libraries (debugir PUBLIC ${llvm_libs})
+target_link_libraries (debugir PUBLIC LLVM)
