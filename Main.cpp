@@ -32,7 +32,7 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/Utils/InstructionNamer.h"
 
-#include "DebugIR.h"
+#include <debugir/DebugIR.h>
 
 using namespace llvm;
 

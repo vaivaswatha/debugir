@@ -52,7 +52,7 @@ target_compile_options(dbgir PRIVATE ${DEBUGIR_WARN_FLAGS})
 
 separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
 target_compile_definitions(dbgir PUBLIC ${LLVM_DEFINITIONS_LIST})
-target_include_directories(dbgir PUBLIC ${PROJECT_SOURCE_DIR})
+target_include_directories(dbgir PUBLIC ${PROJECT_SOURCE_DIR}/include/)
 target_include_directories(dbgir PUBLIC ${LLVM_INCLUDE_DIRS})
 target_link_libraries (dbgir PUBLIC ${llvm_libs})
 

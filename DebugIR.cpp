@@ -32,7 +32,7 @@
 #include "llvm/Transforms/Utils/Cloning.h"
 #include <string>
 
-#include "DebugIR.h"
+#include <debugir/DebugIR.h>
 
 #define STR_HELPER(x) #x
 #define STR(x) STR_HELPER(x)
