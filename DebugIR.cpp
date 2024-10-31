@@ -32,7 +32,7 @@
 #include "llvm/Transforms/Utils/Cloning.h"
 #include <string>
 
-#include "DebugIR.h"
+#include <debugir/DebugIR.h>
 
 #define STR_HELPER(x) #x
 #define STR(x) STR_HELPER(x)
@@ -448,7 +448,12 @@ private:
     } else if (T->isPointerTy()) {
       N = Builder.createPointerType(
           nullptr, Layout.getPointerTypeSizeInBits(T),
-          Layout.getPrefTypeAlign(T).value() * CHAR_BIT, /*DWARFAddressSpace=*/std::nullopt,
+          Layout.getPrefTypeAlign(T).value() * CHAR_BIT, 
+#if LLVM_VERSION_MAJOR > 15
+          /*DWARFAddressSpace=*/std::nullopt,
+#else
+          /*DWARFAddressSpace=*/None,
+#endif
           getTypeName(T));
     } else if (T->isArrayTy()) {
       SmallVector<Metadata *, 4>
@@ -498,7 +503,7 @@ private:
 
 } // anonymous namespace
 
-namespace llvm {
+namespace debugir {
 
 std::unique_ptr<Module> createDebugInfo(Module &M, std::string Directory,
                                         std::string Filename) {

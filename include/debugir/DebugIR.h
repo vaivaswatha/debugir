@@ -20,7 +20,7 @@
 #include <memory>
 #include <string>
 
-namespace llvm {
+namespace debugir {
 
 // Attaches debug info to M, assuming it is parsed from Directory/Filename.
 // Returns a module for display in debugger devoid of any debug info.
