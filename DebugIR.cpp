@@ -503,7 +503,7 @@ private:
 
 } // anonymous namespace
 
-namespace llvm {
+namespace debugir {
 
 std::unique_ptr<Module> createDebugInfo(Module &M, std::string Directory,
                                         std::string Filename) {

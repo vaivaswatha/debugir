@@ -104,7 +104,7 @@ int main(int argc, char *argv[]) {
     MPM.run(*M, MAM);
   }
 
-  auto DisplayM = createDebugInfo(*M.get(), Directory.str(), Filename.str());
+  auto DisplayM = debugir::createDebugInfo(*M.get(), Directory.str(), Filename.str());
   std::error_code EC;
 
   // Update InputFile in-place so that line numbers match with DebugFile.
