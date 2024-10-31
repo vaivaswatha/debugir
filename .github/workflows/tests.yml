@@ -17,7 +17,7 @@ jobs:
 
       - name: Check if CMakeLists.txt is in sync with our LLVM_VERSION
         run: |
-          grep -q "LLVM $LLVM_VERSION" CMakeLists.txt
+          grep -q "set(DEBUGIR_LLVM_VERSION $LLVM_VERSION" CMakeLists.txt
 
       - name: Check if README is in sync with our LLVM_VERSION
         run: |
