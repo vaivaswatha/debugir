@@ -19,7 +19,10 @@ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 # check dependencies
 #
 # LLVM stuff
-find_package(LLVM 18.1 REQUIRED CONFIG)
+if(NOT DEFINED DEBUGIR_LLVM_VERSION)
+  set(DEBUGIR_LLVM_VERSION 18.1)
+endif()
+find_package(LLVM ${DEBUGIR_LLVM_VERSION} REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 if(LINK_LLVM_SHARED)
