@@ -252,6 +252,9 @@ public:
       return;
     }
 
+    if (isa<PHINode>(I))
+      Scope = Scope->getSubprogram(); // See https://github.com/llvm/llvm-project/issues/118883
+
     DebugLoc NewLoc =
         DebugLoc(DILocation::get(M.getContext(), Line, Col, Scope, InlinedAt));
     addDebugLocation(I, NewLoc);
