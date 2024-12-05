@@ -292,6 +292,10 @@ private:
     NamedMDNode *NMD = M.getOrInsertNamedMetadata("llvm.dbg.cu");
     NMD->clearOperands();
     NMD->addOperand(CU);
+
+    for (DISubprogram *S : Finder.subprograms()) {
+      S->replaceUnit(CU);
+    }
   }
 
   DIScope *getBlockScope(DIScope *ParentScope, const BasicBlock *B) {
