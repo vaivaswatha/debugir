@@ -252,6 +252,9 @@ public:
       return;
     }
 
+    if (isa<PHINode>(I))
+      Scope = Scope->getSubprogram(); // See https://github.com/llvm/llvm-project/issues/118883
+
     DebugLoc NewLoc =
         DebugLoc(DILocation::get(M.getContext(), Line, Col, Scope, InlinedAt));
     addDebugLocation(I, NewLoc);
@@ -259,8 +262,15 @@ public:
     if (!I.getType()->isVoidTy() && !I.getName().empty()) {
       auto DILV = Builder.createAutoVariable(Scope, I.getName(), FileNode, Line,
                                              getOrCreateType(I.getType()));
-      Builder.insertDeclare(&I, DILV, Builder.createExpression(), NewLoc.get(),
-                            I.getParent());
+      if (isa<PHINode>(I))
+        Builder.insertDbgValueIntrinsic(&I, DILV, Builder.createExpression(),
+                                        NewLoc.get(), I.getParent()->getFirstNonPHI());
+      else if (Instruction *NI = I.getNextNonDebugInstruction(/* SkipPseudoOp */ true))
+        Builder.insertDbgValueIntrinsic(&I, DILV, Builder.createExpression(),
+                                        NewLoc.get(), NI);
+      else
+        Builder.insertDbgValueIntrinsic(&I, DILV, Builder.createExpression(),
+                                        NewLoc.get(), I.getParent());
     }
   }
 
