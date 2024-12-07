@@ -305,6 +305,7 @@ private:
 
     for (DISubprogram *S : Finder.subprograms()) {
       S->replaceUnit(CU);
+      S->replaceOperandWith(0, FileNode); // replace 'File'
     }
   }
 
