@@ -32,22 +32,51 @@ else()
   llvm_map_components_to_libnames(llvm_libs support core irreader transformutils Passes)
 endif()
 
-add_library(dbgir SHARED DebugIR.cpp)
+if (WIN32)
+  find_library(
+    DIA_GUIDS_LIB
+    NAMES diaguids
+    PATHS
+      "$ENV{VSINSTALLDIR}/DIA SDK/lib/amd64"
+      "$ENV{ProgramFiles}/Microsoft Visual Studio/2022/Community/DIA SDK/lib/amd64"
+      "$ENV{ProgramFiles}/Microsoft Visual Studio/2022/BuildTools/DIA SDK/lib/amd64"
+      "$ENV{ProgramFiles\(x86\)}/Microsoft Visual Studio/2022/Community/DIA SDK/lib/amd64"
+      "$ENV{ProgramFiles\(x86\)}/Microsoft Visual Studio/2022/BuildTools/DIA SDK/lib/amd64"
+    NO_DEFAULT_PATH
+  )
+  if (DIA_GUIDS_LIB)
+    list(APPEND llvm_libs ${DIA_GUIDS_LIB})
+  endif()
+endif()
+
+add_library(dbgir STATIC DebugIR.cpp)
 
 # Match LLVM's RTTI build mode
 if (NOT LLVM_ENABLE_RTTI)
   message(STATUS "LLVM does not have RTTI enabled. Building with -fno-rtti")
-  target_compile_options(dbgir PUBLIC -fno-rtti)
+  target_compile_options(
+    dbgir
+    PUBLIC
+      $<$<CXX_COMPILER_ID:MSVC>:/GR->
+      $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-fno-rtti>
+  )
 endif()
 
-set(DEBUGIR_WARN_FLAGS
-  -Wall
-  -Werror
-  -pedantic
-  -Wextra
-  -Wno-unknown-pragmas
-  -Wno-unused-parameter
-)
+if (MSVC)
+  set(DEBUGIR_WARN_FLAGS
+    /W4
+    /permissive-
+  )
+else()
+  set(DEBUGIR_WARN_FLAGS
+    -Wall
+    -Werror
+    -pedantic
+    -Wextra
+    -Wno-unknown-pragmas
+    -Wno-unused-parameter
+  )
+endif()
 
 # compiler and linker options
 #   PUBLIC because we apply the same to the debugir executable
