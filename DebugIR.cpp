@@ -16,6 +16,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "llvm/Config/llvm-config.h"
 #include "llvm/IR/AssemblyAnnotationWriter.h"
 #include "llvm/IR/DIBuilder.h"
 #include "llvm/IR/DataLayout.h"
@@ -130,7 +131,8 @@ public:
   DIUpdater(Module &M, StringRef Filename = StringRef(),
             StringRef Directory = StringRef(), const Module *DisplayM = nullptr,
             const ValueToValueMapTy *VMap = nullptr)
-      : Builder(M), Layout(&M), LineTable(DisplayM ? DisplayM : &M), VMap(VMap),
+      : Builder(M), Layout(M.getDataLayout()),
+        LineTable(DisplayM ? DisplayM : &M), VMap(VMap),
         Finder(), Filename(Filename), Directory(Directory), FileNode(nullptr),
         LexicalBlockFileNode(nullptr), M(M), tempNameCounter(0) {
 
@@ -262,15 +264,7 @@ public:
     if (!I.getType()->isVoidTy() && !I.getName().empty()) {
       auto DILV = Builder.createAutoVariable(Scope, I.getName(), FileNode, Line,
                                              getOrCreateType(I.getType()));
-      if (isa<PHINode>(I))
-        Builder.insertDbgValueIntrinsic(&I, DILV, Builder.createExpression(),
-                                        NewLoc.get(), I.getParent()->getFirstNonPHI());
-      else if (Instruction *NI = I.getNextNonDebugInstruction(/* SkipPseudoOp */ true))
-        Builder.insertDbgValueIntrinsic(&I, DILV, Builder.createExpression(),
-                                        NewLoc.get(), NI);
-      else
-        Builder.insertDbgValueIntrinsic(&I, DILV, Builder.createExpression(),
-                                        NewLoc.get(), I.getParent());
+      insertValueDescription(I, DILV, NewLoc);
     }
   }
 
@@ -508,8 +502,37 @@ private:
       Params.push_back(getOrCreateType(T));
     }
 
-    DITypeRefArray ParamArray = Builder.getOrCreateTypeArray(Params);
+    auto ParamArray = Builder.getOrCreateTypeArray(Params);
     return Builder.createSubroutineType(ParamArray);
+  }
+
+  /// Describes the value produced by I with variable DILV, at debug location
+  /// Loc. The description goes right after I, or after the block's PHI nodes if
+  /// I is itself a PHI node, since those must stay contiguous.
+  void insertValueDescription(Instruction &I, DILocalVariable *DILV,
+                              const DebugLoc &Loc) {
+    BasicBlock *BB = I.getParent();
+    BasicBlock::iterator InsertPt = BB->getFirstNonPHIIt();
+    if (!isa<PHINode>(I)) {
+      // Skip past the debug intrinsics that follow I, if any. 
+      InsertPt = std::next(I.getIterator());
+      while (InsertPt != BB->end() && InsertPt->isDebugOrPseudoInst())
+        ++InsertPt;
+    }
+
+#if LLVM_VERSION_MAJOR >= 19
+    Builder.insertDbgValueIntrinsic(&I, DILV, Builder.createExpression(),
+                                    Loc.get(), InsertPt);
+#else
+    // Before LLVM 19 the insertion point is an instruction to insert before, or
+    // the block to append to.
+    if (InsertPt == BB->end())
+      Builder.insertDbgValueIntrinsic(&I, DILV, Builder.createExpression(),
+                                      Loc.get(), BB);
+    else
+      Builder.insertDbgValueIntrinsic(&I, DILV, Builder.createExpression(),
+                                      Loc.get(), &*InsertPt);
+#endif
   }
 
   /// Associates Instruction I with debug location Loc.
