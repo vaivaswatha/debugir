@@ -32,20 +32,16 @@ jobs:
           wget https://apt.llvm.org/llvm.sh
           chmod +x llvm.sh
           sudo ./llvm.sh $LLVM_VERSION
+          # lit and FileCheck.
+          sudo apt-get install -y llvm-$LLVM_VERSION-tools
 
       - name: build debugir
         run: |
-           mkdir build
-           cd build
-           cmake -DCMAKE_BUILD_TYPE=Release ../
-           cmake --build .
+          cmake -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build
 
-      - name: generate hello.ll
+      # Build with assertions for tests
+      - name: run the tests
         run: |
-          cd test-files
-          clang-$LLVM_VERSION -emit-llvm -o hello.ll -S hello.c
-
-      - name: test generating hello dbg ll
-        run: |
-           ./build/debugir ./test-files/hello.ll
-           test -e ./test-files/hello.dbg.ll
+          cmake -B build-assertions -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build-assertions --target check

@@ -1,0 +1,16 @@
+# The worked example from the README, from C source to a debuggable file.
+
+# REQUIRES: clang
+
+# RUN: clang -emit-llvm -S -o "%t.ll" %hello-c
+# RUN: %debugir -instnamer "%t.ll"
+# RUN: opt -passes=verify -disable-output "%t.dbg.ll"
+# RUN: %check-lines "%t.ll" "%t.dbg.ll"
+# RUN: clang -c -O0 -Wno-override-module "%t.dbg.ll" -o "%t.o"
+# RUN: llvm-dwarfdump --verify "%t.o" | FileCheck --check-prefix=VERIFY "%s"
+
+# VERIFY: No errors.
+
+# Every variable that reaches DWARF must have somewhere to read it from.
+# RUN: llvm-dwarfdump --statistics "%t.o" > "%t.json"
+# RUN: %check-coverage "%t.json"

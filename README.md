@@ -91,3 +91,13 @@ line 15 is a valid line number in the LLVM source. Change this line number
 to an appropriate value or to a function name. Note: Since `lli`, at the
 time of invocation from gdb will not have, yet, loaded the object file for
 `hello`, you will need to set `set breakpoint pending on` in `gdb`.
+
+### Testsuite
+
+The tests need `lit` and `FileCheck`. On Debian and Ubuntu you can install `llvm-23-tools`.
+
+```sh
+  cmake --build . --target check
+```
+
+Build with `-DCMAKE_BUILD_TYPE=Debug` to run them with assertions enabled.

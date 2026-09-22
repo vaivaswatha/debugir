@@ -61,3 +61,24 @@ target_link_libraries (dbgir PUBLIC ${llvm_libs})
 add_executable(debugir Main.cpp)
 target_compile_options(debugir PRIVATE ${DEBUGIR_WARN_FLAGS})
 target_link_libraries(debugir dbgir)
+
+#
+# tests
+#
+# `lit` and `FileCheck` come with the LLVM installation, in the llvm-tools
+# package on Debian and Ubuntu. Without them there is nothing to run the tests
+# with, so the target is left out.
+find_program(DEBUGIR_LIT NAMES lit llvm-lit lit.py HINTS ${LLVM_TOOLS_BINARY_DIR})
+find_program(DEBUGIR_FILECHECK NAMES FileCheck HINTS ${LLVM_TOOLS_BINARY_DIR})
+if(DEBUGIR_LIT AND DEBUGIR_FILECHECK)
+  set(DEBUGIR_EXE ${CMAKE_CURRENT_BINARY_DIR}/debugir)
+  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/test/lit.site.cfg.py.in
+                 ${CMAKE_CURRENT_BINARY_DIR}/test/lit.site.cfg.py @ONLY)
+  add_custom_target(check
+                    COMMAND ${DEBUGIR_LIT} -sv ${CMAKE_CURRENT_BINARY_DIR}/test
+                    DEPENDS debugir
+                    USES_TERMINAL)
+  message(STATUS "Tests are available through the 'check' target")
+else()
+  message(STATUS "lit or FileCheck not found: the 'check' target is not available")
+endif()
