@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        llvm: [16, 17, 18, 19, 20, 21, 22, 23]
+        llvm: [15, 16, 17, 18, 19, 20, 21, 22, 23]
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     env:

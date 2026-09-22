@@ -18,8 +18,8 @@
 
 #include "llvm/Config/llvm-config.h"
 
-#if LLVM_VERSION_MAJOR < 16
-#error "debugir requires LLVM 16 or later"
+#if LLVM_VERSION_MAJOR < 15
+#error "debugir requires LLVM 15 or later"
 #endif
 
 #include "llvm/IR/AssemblyAnnotationWriter.h"
@@ -461,7 +461,13 @@ private:
       N = Builder.createPointerType(
           nullptr, Layout.getPointerTypeSizeInBits(T),
           Layout.getPrefTypeAlign(T).value() * CHAR_BIT,
-          /*DWARFAddressSpace=*/std::nullopt, getTypeName(T));
+#if LLVM_VERSION_MAJOR >= 16
+          /*DWARFAddressSpace=*/std::nullopt,
+#else
+          // Before LLVM 16 this is an llvm::Optional, not a std::optional.
+          /*DWARFAddressSpace=*/None,
+#endif
+          getTypeName(T));
     } else if (T->isArrayTy()) {
       SmallVector<Metadata *, 4>
           Subscripts; // unfortunately, SmallVector<Type *> does not decay to
@@ -515,10 +521,34 @@ private:
   static std::optional<InsertPoint> getInsertionPoint(Instruction &I) {
 #if LLVM_VERSION_MAJOR >= 18
     return I.getInsertionPointAfterDef();
-#else
+#elif LLVM_VERSION_MAJOR >= 16
     if (Instruction *Pos = I.getInsertionPointAfterDef())
       return Pos;
     return std::nullopt;
+#else
+    // LLVM 15 has no such function. Do what LLVM 17 and later do.
+    if (isa<CallBrInst>(I))
+      // The value is available in more than one successor, so no single point
+      // dominates all of its uses.
+      return std::nullopt;
+
+    BasicBlock *InsertBB;
+    BasicBlock::iterator InsertPt;
+    if (auto *PN = dyn_cast<PHINode>(&I)) {
+      InsertBB = PN->getParent();
+      InsertPt = InsertBB->getFirstInsertionPt();
+    } else if (auto *II = dyn_cast<InvokeInst>(&I)) {
+      InsertBB = II->getNormalDest();
+      InsertPt = InsertBB->getFirstInsertionPt();
+    } else {
+      InsertBB = I.getParent();
+      InsertPt = std::next(I.getIterator());
+    }
+
+    // Coudln't find a legal insertion point.
+    if (InsertPt == InsertBB->end())
+      return std::nullopt;
+    return &*InsertPt;
 #endif
   }
 

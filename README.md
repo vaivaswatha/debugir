@@ -33,7 +33,7 @@ Such a file can be dynamically generated, or using clang as
 </details>
 
 ### Clone and build
-LLVM 16 to 23 are supported.
+LLVM 15 to 23 are supported.
 
 ```sh
   git clone https://github.com/vaivaswatha/debugir.git debugir

@@ -19,7 +19,7 @@ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 #
 # LLVM stuff
 # Keep this in step with the check at the top of DebugIR.cpp and with the README.
-set(DEBUGIR_LLVM_MIN_VERSION 16)
+set(DEBUGIR_LLVM_MIN_VERSION 15)
 set(DEBUGIR_LLVM_MAX_VERSION 23)
 
 # Set DEBUGIR_LLVM_VERSION to choose between several installed LLVM versions,
