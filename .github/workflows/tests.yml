@@ -7,41 +7,51 @@ on:
 name: Test debug ll generation
 
 jobs:
-  test-debug-ll-generation:
-    runs-on: [ubuntu-24.04]
-    timeout-minutes: 90
-    env:
-      LLVM_VERSION: 23
+  # The supported range of LLVM versions is written in three places.
+  versions-in-sync:
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
 
-      - name: Check if CMakeLists.txt is in sync with our LLVM_VERSION
+      - name: Check that all three agree on the supported range
         run: |
-          grep -q "set(DEBUGIR_LLVM_VERSION $LLVM_VERSION" CMakeLists.txt
+          MIN=$(grep -oP 'set\(DEBUGIR_LLVM_MIN_VERSION \K[0-9]+' CMakeLists.txt)
+          MAX=$(grep -oP 'set\(DEBUGIR_LLVM_MAX_VERSION \K[0-9]+' CMakeLists.txt)
+          echo "CMakeLists.txt says LLVM $MIN to $MAX"
+          grep -q "LLVM_VERSION_MAJOR < $MIN" DebugIR.cpp
+          grep -q "LLVM $MIN to $MAX" README.md
 
-      - name: Check if DebugIR.cpp is in sync with our LLVM_VERSION
-        run: |
-          grep -q "LLVM_VERSION_MAJOR < $LLVM_VERSION" DebugIR.cpp
-
-      - name: Check if README is in sync with our LLVM_VERSION
-        run: |
-          grep -q "LLVM-$LLVM_VERSION" README.md
+  test-debug-ll-generation:
+    strategy:
+      fail-fast: false
+      matrix:
+        llvm: [16, 17, 18, 19, 20, 21, 22, 23]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      LLVM_VERSION: ${{ matrix.llvm }}
+      LLVM_DIR: /usr/lib/llvm-${{ matrix.llvm }}/cmake
+    steps:
+      - uses: actions/checkout@v5
 
       - name: install LLVM
         run: |
-          wget https://apt.llvm.org/llvm.sh
-          chmod +x llvm.sh
-          sudo ./llvm.sh $LLVM_VERSION
-          # lit and FileCheck.
-          sudo apt-get install -y llvm-$LLVM_VERSION-tools
+          PACKAGES="llvm-$LLVM_VERSION-dev llvm-$LLVM_VERSION-tools clang-$LLVM_VERSION"
+          sudo apt-get update
+          if ! sudo apt-get install -y $PACKAGES; then
+            wget https://apt.llvm.org/llvm.sh
+            chmod +x llvm.sh
+            sudo ./llvm.sh $LLVM_VERSION
+            sudo apt-get install -y $PACKAGES
+          fi
 
       - name: build debugir
         run: |
-          cmake -B build -DCMAKE_BUILD_TYPE=Release
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DLLVM_DIR=$LLVM_DIR
           cmake --build build
 
       # Build with assertions for tests
       - name: run the tests
         run: |
-          cmake -B build-assertions -DCMAKE_BUILD_TYPE=Debug
+          cmake -B build-assertions -DCMAKE_BUILD_TYPE=Debug -DLLVM_DIR=$LLVM_DIR
           cmake --build build-assertions --target check

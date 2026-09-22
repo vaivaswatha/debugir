@@ -18,8 +18,8 @@
 
 #include "llvm/Config/llvm-config.h"
 
-#if LLVM_VERSION_MAJOR < 23
-#error "debugir requires LLVM 23 or later"
+#if LLVM_VERSION_MAJOR < 16
+#error "debugir requires LLVM 16 or later"
 #endif
 
 #include "llvm/IR/AssemblyAnnotationWriter.h"
@@ -504,23 +504,37 @@ private:
     return Builder.createSubroutineType(ParamArray);
   }
 
+#if LLVM_VERSION_MAJOR >= 18
+  using InsertPoint = BasicBlock::iterator;
+#else
+  // Before LLVM 18 an insertion point is an instruction.
+  using InsertPoint = Instruction *;
+#endif
+
+  /// Returns the first point (if one exists) where the value of I is defined.
+  static std::optional<InsertPoint> getInsertionPoint(Instruction &I) {
+#if LLVM_VERSION_MAJOR >= 18
+    return I.getInsertionPointAfterDef();
+#else
+    if (Instruction *Pos = I.getInsertionPointAfterDef())
+      return Pos;
+    return std::nullopt;
+#endif
+  }
+
   /// Describes the value produced by I as a variable named after I, in scope
   /// Scope and at debug location Loc. The description goes at the first point
-  /// where the value is defined. That is not always right after I: for a PHI
-  /// node it is after the block's PHI nodes, which must stay contiguous, and
-  /// for an invoke it is at the start of the normal destination block.
+  /// where the value is defined.
   void insertValueDescription(Instruction &I, DILocalScope *Scope,
                               const DebugLoc &Loc) {
-    std::optional<BasicBlock::iterator> Pos = I.getInsertionPointAfterDef();
+    std::optional<InsertPoint> Pos = getInsertionPoint(I);
     if (!Pos) {
-      // A callbr defines its value in more than one successor, and a
-      // catchswitch block has no legal insertion point at all.
       LLVM_DEBUG(dbgs() << "WARNING: no insertion point to describe the value "
                         << "of instruction " << &I << "\n");
       return;
     }
 
-    BasicBlock::iterator InsertPt = *Pos;
+    InsertPoint InsertPt = *Pos;
     DebugLoc DescLoc = Loc;
     if (InsertPt->getParent() != I.getParent()) {
       // The lexical block of I does not cover the block that the description
@@ -535,8 +549,14 @@ private:
     auto *DILV =
         Builder.createAutoVariable(Scope, I.getName(), FileNode, Loc.getLine(),
                                    getOrCreateType(I.getType()));
+#if LLVM_VERSION_MAJOR >= 20
     Builder.insertDbgValueIntrinsic(&I, DILV, Builder.createExpression(),
                                     DescLoc.get(), InsertPt);
+#else
+    // Before LLVM 20 DIBuilder takes the instruction to insert before.
+    Builder.insertDbgValueIntrinsic(&I, DILV, Builder.createExpression(),
+                                    DescLoc.get(), &*InsertPt);
+#endif
   }
 
   /// Associates Instruction I with debug location Loc.

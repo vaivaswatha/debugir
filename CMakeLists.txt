@@ -18,12 +18,25 @@ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 # check dependencies
 #
 # LLVM stuff
-if(NOT DEFINED DEBUGIR_LLVM_VERSION)
-  set(DEBUGIR_LLVM_VERSION 23.1)
+# Keep this in step with the check at the top of DebugIR.cpp and with the README.
+set(DEBUGIR_LLVM_MIN_VERSION 16)
+set(DEBUGIR_LLVM_MAX_VERSION 23)
+
+# Set DEBUGIR_LLVM_VERSION to choose between several installed LLVM versions,
+# or set LLVM_DIR to point at one of them.
+if(DEFINED DEBUGIR_LLVM_VERSION)
+  find_package(LLVM ${DEBUGIR_LLVM_VERSION} REQUIRED CONFIG)
+else()
+  find_package(LLVM REQUIRED CONFIG)
 endif()
-find_package(LLVM ${DEBUGIR_LLVM_VERSION} REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+if(LLVM_VERSION_MAJOR LESS DEBUGIR_LLVM_MIN_VERSION OR
+   LLVM_VERSION_MAJOR GREATER DEBUGIR_LLVM_MAX_VERSION)
+  message(FATAL_ERROR
+          "debugir needs LLVM ${DEBUGIR_LLVM_MIN_VERSION} to "
+          "${DEBUGIR_LLVM_MAX_VERSION}, but found ${LLVM_PACKAGE_VERSION}")
+endif()
 if(LINK_LLVM_SHARED)
   set(llvm_libs LLVM)
 else()

@@ -33,7 +33,7 @@ Such a file can be dynamically generated, or using clang as
 </details>
 
 ### Clone and build
-This tool requires LLVM-23 to be installed.
+LLVM 16 to 23 are supported.
 
 ```sh
   git clone https://github.com/vaivaswatha/debugir.git debugir
@@ -42,8 +42,9 @@ This tool requires LLVM-23 to be installed.
   cmake --build .
 ```
 
-If you have LLVM installed in a non-standard path, you may provide the
-additional `CMake` argument `-DLLVM_DIR=/path/to/llvm`.
+If you have LLVM installed in a non-standard path, or you have more than
+one version installed, provide the additional `CMake` argument
+`-DLLVM_DIR=/path/to/llvm` to choose between them.
 
 If you would like to link debugir to the relevant static LLVM components, use
 ```
@@ -94,7 +95,7 @@ time of invocation from gdb will not have, yet, loaded the object file for
 
 ### Testsuite
 
-The tests need `lit` and `FileCheck`. On Debian and Ubuntu you can install `llvm-23-tools`.
+The tests need `lit` and `FileCheck`. On Debian and Ubuntu you can install `llvm-<version>-tools`.
 
 ```sh
   cmake --build . --target check
