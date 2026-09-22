@@ -12,11 +12,22 @@ import re
 import sys
 
 
+# Up to LLVM 18 a description is a call to an llvm.dbg.* intrinsic. After that
+# it is a debug record. Either way it is not an instruction of the program, and
+# the display file does not hold it.
+DEBUG_CALL = re.compile(r'^(?:\w+ )*call void @llvm\.dbg\.')
+
+
+def is_description(text):
+    """Tells whether a line describes a value, rather than computing one."""
+    return text.startswith('#dbg_') or DEBUG_CALL.match(text) is not None
+
+
 def parse_instructions(path):
     """Returns {last line number: text of the instruction that ends there}.
 
     Instructions are indented by two spaces. A line indented deeper continues
-    the instruction above it, unless it is a debug record.
+    the instruction above it, unless it is a description.
     """
     instructions = {}
     start = None
@@ -24,14 +35,14 @@ def parse_instructions(path):
     for number, line in enumerate(open(path), start=1):
         line = line.rstrip('\n')
         stripped = line.strip()
-        is_record = stripped.startswith('#dbg_')
-        is_continuation = line.startswith('   ') and not is_record
+        described = is_description(stripped)
+        is_continuation = line.startswith('   ') and not described
         if is_continuation and start is not None:
             text.append(stripped)
             instructions.pop(number - 1, None)
             instructions[number] = ' '.join(text)
             continue
-        if is_record or not line.startswith('  ') or not stripped:
+        if described or not line.startswith('  ') or not stripped:
             start = None
             text = []
             continue
@@ -42,8 +53,11 @@ def parse_instructions(path):
 
 
 def normalize(text):
-    """Drops the metadata that debugir attaches, so the two files compare."""
+    """Drops what debugir adds to an instruction, so the two files compare."""
     text = re.sub(r'(?:,\s*!\w[\w.]* !\d+)+\s*$', '', text)
+    # Declaring the llvm.dbg.* intrinsics adds an attribute group, which moves
+    # the number of each group after it.
+    text = re.sub(r'\s+#\d+$', '', text)
     return re.sub(r'\s+', ' ', text).strip()
 
 

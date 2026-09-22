@@ -1,5 +1,8 @@
 import os
+import shutil
+import subprocess
 import sys
+import tempfile
 
 import lit.formats
 
@@ -30,3 +33,33 @@ config.substitutions.append(
 # Only the tests that go all the way to DWARF need a compiler.
 if os.path.exists(os.path.join(config.llvm_tools_dir, 'clang')):
     config.available_features.add('clang')
+
+
+def writes_debug_records():
+    """Tells how the LLVM in use writes the description of a value.
+
+    Up to LLVM 18 a description is a call to llvm.dbg.value. After that it is a
+    debug record. Run the tool to find out.
+    """
+    directory = tempfile.mkdtemp()
+    try:
+        source = os.path.join(directory, 'probe.ll')
+        with open(source, 'w') as probe:
+            probe.write('define i32 @f(i32 %a) {\n'
+                        '  %r = add i32 %a, 1\n'
+                        '  ret i32 %r\n'
+                        '}\n')
+        if subprocess.call([config.debugir_exe, source],
+                           stdout=subprocess.DEVNULL,
+                           stderr=subprocess.DEVNULL) != 0:
+            return False
+        with open(os.path.join(directory, 'probe.dbg.ll')) as result:
+            return '#dbg_value' in result.read()
+    except OSError:
+        return False
+    finally:
+        shutil.rmtree(directory, ignore_errors=True)
+
+
+if writes_debug_records():
+    config.available_features.add('dbg-records')

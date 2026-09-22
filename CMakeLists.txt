@@ -18,12 +18,25 @@ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 # check dependencies
 #
 # LLVM stuff
-if(NOT DEFINED DEBUGIR_LLVM_VERSION)
-  set(DEBUGIR_LLVM_VERSION 23.1)
+# Keep this in step with the check at the top of DebugIR.cpp and with the README.
+set(DEBUGIR_LLVM_MIN_VERSION 15)
+set(DEBUGIR_LLVM_MAX_VERSION 23)
+
+# Set DEBUGIR_LLVM_VERSION to choose between several installed LLVM versions,
+# or set LLVM_DIR to point at one of them.
+if(DEFINED DEBUGIR_LLVM_VERSION)
+  find_package(LLVM ${DEBUGIR_LLVM_VERSION} REQUIRED CONFIG)
+else()
+  find_package(LLVM REQUIRED CONFIG)
 endif()
-find_package(LLVM ${DEBUGIR_LLVM_VERSION} REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+if(LLVM_VERSION_MAJOR LESS DEBUGIR_LLVM_MIN_VERSION OR
+   LLVM_VERSION_MAJOR GREATER DEBUGIR_LLVM_MAX_VERSION)
+  message(FATAL_ERROR
+          "debugir needs LLVM ${DEBUGIR_LLVM_MIN_VERSION} to "
+          "${DEBUGIR_LLVM_MAX_VERSION}, but found ${LLVM_PACKAGE_VERSION}")
+endif()
 if(LINK_LLVM_SHARED)
   set(llvm_libs LLVM)
 else()
@@ -65,10 +78,11 @@ target_link_libraries(debugir dbgir)
 #
 # tests
 #
-# `lit` and `FileCheck` come with the LLVM installation, in the llvm-tools
-# package on Debian and Ubuntu. Without them there is nothing to run the tests
-# with, so the target is left out.
-find_program(DEBUGIR_LIT NAMES lit llvm-lit lit.py HINTS ${LLVM_TOOLS_BINARY_DIR})
+# Find FileCheck in the LLVM tools directory. lit can also be under build/utils.
+# Do not add the test target if either tool is absent.
+find_program(DEBUGIR_LIT NAMES lit llvm-lit lit.py
+             HINTS ${LLVM_TOOLS_BINARY_DIR}
+                   ${LLVM_TOOLS_BINARY_DIR}/../build/utils/lit)
 find_program(DEBUGIR_FILECHECK NAMES FileCheck HINTS ${LLVM_TOOLS_BINARY_DIR})
 if(DEBUGIR_LIT AND DEBUGIR_FILECHECK)
   set(DEBUGIR_EXE ${CMAKE_CURRENT_BINARY_DIR}/debugir)
