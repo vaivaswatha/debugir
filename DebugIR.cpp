@@ -16,6 +16,12 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "llvm/Config/llvm-config.h"
+
+#if LLVM_VERSION_MAJOR < 23
+#error "debugir requires LLVM 23 or later"
+#endif
+
 #include "llvm/IR/AssemblyAnnotationWriter.h"
 #include "llvm/IR/DIBuilder.h"
 #include "llvm/IR/DataLayout.h"
@@ -30,6 +36,7 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/Transforms/Utils/Cloning.h"
+#include <optional>
 #include <string>
 
 #include <debugir/DebugIR.h>
@@ -130,7 +137,8 @@ public:
   DIUpdater(Module &M, StringRef Filename = StringRef(),
             StringRef Directory = StringRef(), const Module *DisplayM = nullptr,
             const ValueToValueMapTy *VMap = nullptr)
-      : Builder(M), Layout(&M), LineTable(DisplayM ? DisplayM : &M), VMap(VMap),
+      : Builder(M), Layout(M.getDataLayout()),
+        LineTable(DisplayM ? DisplayM : &M), VMap(VMap),
         Finder(), Filename(Filename), Directory(Directory), FileNode(nullptr),
         LexicalBlockFileNode(nullptr), M(M), tempNameCounter(0) {
 
@@ -259,19 +267,8 @@ public:
         DebugLoc(DILocation::get(M.getContext(), Line, Col, Scope, InlinedAt));
     addDebugLocation(I, NewLoc);
 
-    if (!I.getType()->isVoidTy() && !I.getName().empty()) {
-      auto DILV = Builder.createAutoVariable(Scope, I.getName(), FileNode, Line,
-                                             getOrCreateType(I.getType()));
-      if (isa<PHINode>(I))
-        Builder.insertDbgValueIntrinsic(&I, DILV, Builder.createExpression(),
-                                        NewLoc.get(), I.getParent()->getFirstNonPHI());
-      else if (Instruction *NI = I.getNextNonDebugInstruction(/* SkipPseudoOp */ true))
-        Builder.insertDbgValueIntrinsic(&I, DILV, Builder.createExpression(),
-                                        NewLoc.get(), NI);
-      else
-        Builder.insertDbgValueIntrinsic(&I, DILV, Builder.createExpression(),
-                                        NewLoc.get(), I.getParent());
-    }
+    if (!I.getType()->isVoidTy() && !I.getName().empty())
+      insertValueDescription(I, Scope, NewLoc);
   }
 
 private:
@@ -463,13 +460,8 @@ private:
     } else if (T->isPointerTy()) {
       N = Builder.createPointerType(
           nullptr, Layout.getPointerTypeSizeInBits(T),
-          Layout.getPrefTypeAlign(T).value() * CHAR_BIT, 
-#if LLVM_VERSION_MAJOR > 15
-          /*DWARFAddressSpace=*/std::nullopt,
-#else
-          /*DWARFAddressSpace=*/None,
-#endif
-          getTypeName(T));
+          Layout.getPrefTypeAlign(T).value() * CHAR_BIT,
+          /*DWARFAddressSpace=*/std::nullopt, getTypeName(T));
     } else if (T->isArrayTy()) {
       SmallVector<Metadata *, 4>
           Subscripts; // unfortunately, SmallVector<Type *> does not decay to
@@ -508,8 +500,43 @@ private:
       Params.push_back(getOrCreateType(T));
     }
 
-    DITypeRefArray ParamArray = Builder.getOrCreateTypeArray(Params);
+    auto ParamArray = Builder.getOrCreateTypeArray(Params);
     return Builder.createSubroutineType(ParamArray);
+  }
+
+  /// Describes the value produced by I as a variable named after I, in scope
+  /// Scope and at debug location Loc. The description goes at the first point
+  /// where the value is defined. That is not always right after I: for a PHI
+  /// node it is after the block's PHI nodes, which must stay contiguous, and
+  /// for an invoke it is at the start of the normal destination block.
+  void insertValueDescription(Instruction &I, DILocalScope *Scope,
+                              const DebugLoc &Loc) {
+    std::optional<BasicBlock::iterator> Pos = I.getInsertionPointAfterDef();
+    if (!Pos) {
+      // A callbr defines its value in more than one successor, and a
+      // catchswitch block has no legal insertion point at all.
+      LLVM_DEBUG(dbgs() << "WARNING: no insertion point to describe the value "
+                        << "of instruction " << &I << "\n");
+      return;
+    }
+
+    BasicBlock::iterator InsertPt = *Pos;
+    DebugLoc DescLoc = Loc;
+    if (InsertPt->getParent() != I.getParent()) {
+      // The lexical block of I does not cover the block that the description
+      // goes into, so the debugger would drop a variable scoped to it. Widen
+      // the scope to the whole function, as is done for PHI nodes.
+      Scope = Scope->getSubprogram();
+      DescLoc = DebugLoc(DILocation::get(M.getContext(), Loc.getLine(),
+                                         Loc.getCol(), Scope,
+                                         Loc.getInlinedAt()));
+    }
+
+    auto *DILV =
+        Builder.createAutoVariable(Scope, I.getName(), FileNode, Loc.getLine(),
+                                   getOrCreateType(I.getType()));
+    Builder.insertDbgValueIntrinsic(&I, DILV, Builder.createExpression(),
+                                    DescLoc.get(), InsertPt);
   }
 
   /// Associates Instruction I with debug location Loc.
@@ -543,4 +570,4 @@ std::unique_ptr<Module> createDebugInfo(Module &M, std::string Directory,
   return DisplayM;
 }
 
-} // namespace llvm
+} // namespace debugir

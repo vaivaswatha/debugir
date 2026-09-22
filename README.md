@@ -33,7 +33,7 @@ Such a file can be dynamically generated, or using clang as
 </details>
 
 ### Clone and build
-This tool requires LLVM-18 to be installed.
+This tool requires LLVM-23 to be installed.
 
 ```sh
   git clone https://github.com/vaivaswatha/debugir.git debugir

@@ -1,4 +1,4 @@
-//===- llvm/Transforms/Instrumentation/DebugIR.h - Interface ----*- C++ -*-===//
+//===- debugir/DebugIR.h - Interface ---------------------------*- C++ -*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -7,9 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file defines the interface of the DebugIR pass. For most users,
-// including Instrumentation.h and calling createDebugIRPass() is sufficient and
-// there is no need to include this file.
+// This file defines the interface of the debugir library.
 //
 //===----------------------------------------------------------------------===//
 
@@ -27,6 +25,6 @@ namespace debugir {
 std::unique_ptr<llvm::Module>
 createDebugInfo(llvm::Module &M, std::string Directory, std::string Filename);
 
-} // namespace llvm
+} // namespace debugir
 
 #endif // DEBUG_IR_H
