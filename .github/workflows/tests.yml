@@ -45,6 +45,12 @@ jobs:
             sudo apt-get install -y $PACKAGES
           fi
 
+      # Install lit separately because LLVM packages do not always include it.
+      - name: install lit
+        run: |
+          sudo python3 -m pip install --break-system-packages lit
+          lit --version
+
       - name: build debugir
         run: |
           cmake -B build -DCMAKE_BUILD_TYPE=Release -DLLVM_DIR=$LLVM_DIR

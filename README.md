@@ -95,7 +95,9 @@ time of invocation from gdb will not have, yet, loaded the object file for
 
 ### Testsuite
 
-The tests need `lit` and `FileCheck`. On Debian and Ubuntu you can install `llvm-<version>-tools`.
+The tests need `lit` and `FileCheck`. On Debian and Ubuntu `FileCheck` is in
+the `llvm-<version>-tools` package. You may install `lit` with `pip install lit`
+if your system package manager does not provide it.
 
 ```sh
   cmake --build . --target check
