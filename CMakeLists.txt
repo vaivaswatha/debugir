@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5.1)
+cmake_minimum_required(VERSION 3.20)
 
 project(DebugIR LANGUAGES C CXX)
 
@@ -11,7 +11,6 @@ set(CMAKE_CXX_STANDARD 20)
 
 # detect operating system
 message(STATUS "We are on a ${CMAKE_SYSTEM_NAME} system")
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 # Print build type: Debug/Release etc.
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
@@ -20,7 +19,7 @@ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 #
 # LLVM stuff
 if(NOT DEFINED DEBUGIR_LLVM_VERSION)
-  set(DEBUGIR_LLVM_VERSION 18.1)
+  set(DEBUGIR_LLVM_VERSION 23.1)
 endif()
 find_package(LLVM ${DEBUGIR_LLVM_VERSION} REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
