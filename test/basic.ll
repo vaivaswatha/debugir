@@ -2,6 +2,8 @@
 ; instruction that computes it, and each line number points back at the
 ; instruction in the display file.
 
+; REQUIRES: dbg-records
+
 ; RUN: cp "%s" "%t.ll"
 ; RUN: %debugir "%t.ll"
 ; RUN: opt -passes=verify -disable-output "%t.dbg.ll"

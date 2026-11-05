@@ -3,6 +3,8 @@
 ; - An invoke defines its value in the normal destination.
 ; - A callbr defines its value in multiple successors.
 
+; REQUIRES: dbg-records
+
 ; RUN: cp "%s" "%t.ll"
 ; RUN: %debugir "%t.ll"
 ; RUN: opt -passes=verify -disable-output "%t.dbg.ll"
